@@ -4,45 +4,21 @@ function CanvasDrawer() {
   const [image, setImage] = useState(null);
   const canvasRef = useRef(null);
 
+  const [coords, setCoords] = useState('')
+
   const handleTakePicture = (e) => {
-    console.log(e)
     const targetInputImage = e.target.files[0]
-    // setImage(targetInputImage)
     const imageObj = URL.createObjectURL(e.target.files[0])
-    const img = new Image()
+
+    const canvas = canvasRef.current;
+
+    const img = new Image(canvas.width)
     img.src = imageObj
     img.onload = () => {
-        const canvas = canvasRef.current;
         const ctx = canvas.getContext("2d");
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
     }
-
-    // const video = document.createElement("video");
-    // video.srcObject = targetInputImage;
-    // video.addEventListener("loadedmetadata", (e) => {
-    //     video.play();
-    // });
-    // video.addEventListener("canplay", (e) => {
-    //     const canvas = canvasRef.current;
-    //     const ctx = canvas.getContext("2d");
-    //     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-    // });
-
-
-    // navigator.mediaDevices
-    //   .getUserMedia({ video: true, audio: false })
-    //   .then((stream) => {
-    //     const video = document.createElement("video");
-    //     video.srcObject = stream;
-    //     video.addEventListener("loadedmetadata", (e) => {
-    //       video.play();
-    //     });
-    //     video.addEventListener("canplay", (e) => {
-    //       const canvas = canvasRef.current;
-    //       const ctx = canvas.getContext("2d");
-    //       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-    //     });
-    //   });
+    setImage(img)
   };
 
   const handleSaveImage = () => {
@@ -55,6 +31,9 @@ function CanvasDrawer() {
   };
 
   const handleStartDrawing = (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+
     const canvas = canvasRef.current;
     const ctx = canvas.getContext("2d");
     ctx.beginPath();
@@ -62,37 +41,61 @@ function CanvasDrawer() {
     ctx.lineWidth = 2;
     ctx.strokeStyle = "red";
 
-    const onMouseMove = (event) => {
-      ctx.lineTo(event.clientX, event.clientY);
+    const onMouseMove = (e) => {
+      e.stopPropagation()
+      e.preventDefault()
+
+      const xMove = e?.touches[0]?.clientX || e.clientX
+      const yMove = e?.touches[0]?.clientY || e.clientY
+
+      setCoords([xMove, yMove])
+
+      ctx.lineTo(xMove, yMove);
       ctx.stroke();
     };
 
     const onMouseUp = () => {
       canvas.removeEventListener("mousemove", onMouseMove);
       canvas.removeEventListener("mouseup", onMouseUp);
+
+      canvas.removeEventListener("touchmove", onMouseMove);
+      canvas.removeEventListener("touchend", onMouseUp);
     };
 
     canvas.addEventListener("mousemove", onMouseMove);
     canvas.addEventListener("mouseup", onMouseUp);
-  };    
+
+    canvas.addEventListener("touchmove", onMouseMove);
+    canvas.addEventListener("touchend", onMouseUp);
+  };
+
+  const handleClearCanvas = () => {
+    const canvas = canvasRef.current
+    const ctx = canvas.getContext('2d')
+    ctx.clearRect(0, 0, canvas.width, canvas.height)
+    ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+  
+  }
 
   return (
     <div>
-      <br />
-      <br />
-      <input type="file" accept="image/x-png,image/jpeg,image/gif" onChange={handleTakePicture} />
-      {/*<button onClick={handleTakePicture}>Take Picture</button>*/}
-      <br />
-      <br />
-      <br />
-      <button onClick={handleSaveImage}>Save Image</button>
-      <br />
       <canvas
         width={500}
         height={500}
         ref={canvasRef}
         onMouseDown={handleStartDrawing}
+        onTouchStart={handleStartDrawing}
+        touch-action="none"
+        style={{ touchAction: "none" }}
       />
+      <br />
+      <input type="file" accept="image/x-png,image/jpeg,image/gif" onChange={handleTakePicture} />
+      <br />
+      <br />
+      <button onClick={handleClearCanvas}>Clear Image Edit</button><br />
+      <br />
+      <button onClick={handleSaveImage}>Save Image</button>
+      <br />
     </div>
   );
 }
